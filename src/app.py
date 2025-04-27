@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 from tasks import load_tasks, save_tasks, filter_tasks_by_priority, filter_tasks_by_category
+import subprocess
 
 def main():
     st.title("To-Do Application")
@@ -42,7 +43,7 @@ def main():
     # Filter options
     col1, col2 = st.columns(2)
     with col1:
-        filter_category = st.selectbox("Filter by Category", ["All"] + list(set([task["category"] for task in tasks])))
+        filter_category = st.selectbox("Filter by Category", ["All"] + list(set([task.get("category", "Unknown") for task in tasks])))
     with col2:
         filter_priority = st.selectbox("Filter by Priority", ["All", "High", "Medium", "Low"])
     
@@ -65,8 +66,12 @@ def main():
                 st.markdown(f"~~**{task['title']}**~~")
             else:
                 st.markdown(f"**{task['title']}**")
-            st.write(task["description"])
-            st.caption(f"Due: {task['due_date']} | Priority: {task['priority']} | Category: {task['category']}")
+            st.write(task.get("description", ""))
+            st.caption(
+                f"Due: {task.get('due_date', 'Unknown')} | "
+                f"Priority: {task.get('priority', 'Unknown')} | "
+                f"Category: {task.get('category', 'Unknown')}"
+            )
         with col2:
             if st.button("Complete" if not task["completed"] else "Undo", key=f"complete_{task['id']}"):
                 for t in tasks:
@@ -78,6 +83,52 @@ def main():
                 tasks = [t for t in tasks if t["id"] != task["id"]]
                 save_tasks(tasks)
                 st.rerun()
+
+
+    st.sidebar.header("Testing Suite")
+
+    if st.sidebar.button("Run Unit Tests"):
+        with st.spinner("Running unit tests..."):
+            result = subprocess.run(
+                ["pytest", "tests/test_basic.py", "-v"],
+                capture_output=True, text=True
+            )
+            st.code(result.stdout)
+
+    if st.sidebar.button("Run Parameterized Tests"):
+        with st.spinner("Running parameterized tests..."):
+            result = subprocess.run(
+                ["pytest", "tests/test_advanced.py", "-v"],
+                capture_output=True, text=True
+            )
+            st.code(result.stdout)
+
+    if st.sidebar.button("Run Full Coverage Report"):
+        with st.spinner("Running tests and coverage..."):
+            result = subprocess.run(
+                ["pytest", "tests/", "--cov=tasks", "--cov-report=term-missing", "--cov-report=html:coverage_html"],
+                capture_output=True, text=True
+            )
+            st.subheader("Test and Coverage Output:")
+            st.code(result.stdout if result.stdout else result.stderr)
+            st.success("✅ HTML coverage report generated at coverage_html/index.html!")
+
+    if st.sidebar.button("Run TDD Tests"):
+        with st.spinner("Running TDD tests..."):
+            result = subprocess.run(
+                ["pytest", "tests/test_tdd.py", "-v"],
+                capture_output=True, text=True
+            )
+            st.code(result.stdout)
+
+    if st.sidebar.button("Run BDD Tests"):
+        with st.spinner("Running BDD feature tests..."):
+            result = subprocess.run(
+                ["pytest", "tests/feature", "-v"],  # <-- fixed: no "s"
+                capture_output=True, text=True
+            )
+            st.code(result.stdout)
+
 
 if __name__ == "__main__":
     main()
